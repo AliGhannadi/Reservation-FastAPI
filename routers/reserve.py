@@ -17,7 +17,7 @@ def get_db():
         db.close()
 db_dependency = Annotated[Session, Depends(get_db)]
 
-@router.get("/reservations/")
+@router.post("/reservations/")
 async def create_reserve(db: db_dependency, create_reservation_request: CreateReservation):
     reserve_model = Reservations(
         user_id=create_reservation_request.user_id,

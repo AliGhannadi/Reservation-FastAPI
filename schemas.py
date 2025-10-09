@@ -9,6 +9,7 @@ class CreateUser(BaseModel):
     last_name: str = Field(..., min_length=2, max_length=30)
     phone_number: str
     password: str = Field(min_length=6, max_length=72, example='strongPassword123!', description='Password must be between 6 and 72 characters long.')
+    admin: bool = False
     @field_validator('password')
     def validate_password(cls, value):
         if ' ' in value:
