@@ -11,6 +11,7 @@ class Users(Base):
     username = Column(String, unique=True, nullable=False)
     hashed_password = Column(String)
     phone_number = Column(String, unique=True, nullable=False)
+    admin = Column(Boolean, default=False)
     appointments = Column(String, nullable=True)  # New column added
 
 class Reservations(Base):
@@ -18,3 +19,4 @@ class Reservations(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     reservation_time = Column(DateTime)
+    number_of_people = Column(Integer)
