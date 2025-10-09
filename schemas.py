@@ -1,0 +1,26 @@
+from pydantic import BaseModel, Field, EmailStr, field_validator
+from typing import Literal
+from datetime import datetime, timezone
+
+class CreateUser(BaseModel):
+    username: str = Field(..., min_length=3, max_length=20, example='john', description='Username must be between 3 and 20 characters.')
+    email: EmailStr = Field(...)
+    first_name: str = Field(..., min_length=2, max_length=30)
+    last_name: str = Field(..., min_length=2, max_length=30)
+    phone_number: str
+    password: str = Field(min_length=6, max_length=20, example='strongPassword123!', description='Password must be between 6 and 20 characters long.')
+    @field_validator('password')
+    def validate_password(cls, value):
+        if ' ' in value:
+            raise ValueError('Password must not contain spaces.')
+        if not any (char.isupper() for char in value):
+            raise ValueError('Password must contain at least one uppercase letter.')
+        if not any (char.islower() for char in value):
+            raise ValueError('Passowrd must contain at least one lowercase letter.')
+        if not any (char.isdigit() for char in value):
+            raise ValueError('Password must contain at least one digit number')
+        return value
+        
+    
+    
+    
