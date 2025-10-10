@@ -154,7 +154,8 @@ async def change_password(user: user_dependency, password_request: ChangePasswor
     user_model = db.query(Users).filter(Users.id == user.get('id')).first()
     if not bcrypt_context.verify(password_request.current_password, user_model.hashed_password):
         raise HTTPException(status_code=400, detail="Incorrect current password")
-
+    if password_request.current_password == password_request.new_password:
+            raise HTTPException(status_code=400, detail="New password must be different from the current password")
     user_model.hashed_password = bcrypt_context.hash(password_request.new_password[:72])
     db.commit()
 
