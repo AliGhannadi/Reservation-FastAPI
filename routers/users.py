@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from db import SessionLocal
 from typing import Annotated, Literal
-from schemas import CreateUser, Token
+from schemas import CreateUser, Token, ChangePasswordRequest
 from models import Users
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
@@ -34,8 +34,8 @@ def authenticate_user(username: str, password: str, db):
     return user
 
 
-def create_access_token(username: str, user_id: int, expires_delta: timedelta):
-    encode = {'sub': username, 'id': user_id}
+def create_access_token(username: str, user_id: int, admin: bool, expires_delta: timedelta):
+    encode = {'sub': username, 'id': user_id, 'admin': admin}
     expires = datetime.now() + expires_delta
     encode.update({'exp': expires})
     return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
@@ -46,10 +46,11 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get('sub')
         user_id: int = payload.get('id')
+        admin: bool = payload.get('admin')
         if username is None or user_id is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                                 detail='Could not validate user.')
-        return {'username': username, 'id': user_id}
+        return {'username': username, 'id': user_id, 'admin': admin}
     except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Could not validate user.')
@@ -101,11 +102,13 @@ async def create_user(db: db_dependency, create_user_request: CreateUser):
         raise HTTPException(status_code=500, detail=str(e))
     
 @router.get("/all_users/")
-async def get_all_users(db: db_dependency):
+async def get_all_users(user: user_dependency, db: db_dependency):
+    if user.get('admin') is False:
+        raise HTTPException(status_code=403, detail="You are not authorized to access this resource.")
     user_model = db.query(Users).all()
     return user_model
 
-@router.get("/{user_id}")
+@router.get("/information/")
 async def get_user_by_id(user: user_dependency, db: db_dependency):
     user_model = db.query(Users).filter(Users.id == user.get('id')).first()
     if not user_model:
@@ -126,29 +129,41 @@ async def update_user_attribute(user_id: int, attribute: str, value: str, db: db
     db.refresh(user_model)
     return user_model
 
-@router.put("/change_first_name/{user_id}")
-async def change_first_name(user_id: int, new_first_name: str, db: db_dependency):
-    return await update_user_attribute(user_id, "first_name", new_first_name, db)
+@router.put("/change_first_name/{user_model.id}")
+async def change_first_name(user: user_dependency, new_first_name: str, db: db_dependency):
+    user_model = db.query(Users).filter(Users.id == user.get('id')).first()
+    return await update_user_attribute(user_model.id, "first_name", new_first_name, db)
 
-@router.put("/change_last_name/{user_id}")
-async def change_last_name(user_id: int, new_last_name: str, db: db_dependency):
-    return await update_user_attribute(user_id, "last_name", new_last_name, db)
+@router.put("/change_last_name/{user_model.id}")
+async def change_last_name(user: user_dependency, new_last_name: str, db: db_dependency):
+    user_model = db.query(Users).filter(Users.id == user.get('id')).first()
+    return await update_user_attribute(user_model.id, "last_name", new_last_name, db)
     
-@router.put("/change_phone_number/{user_id}")
-async def change_phone_number(user_id: int, new_phone_number: str, db: db_dependency):
-    return await update_user_attribute(user_id, "phone_number", new_phone_number, db)
+@router.put("/change_phone_number/{user_model.id}")
+async def change_phone_number(user: user_dependency, new_phone_number: str, db: db_dependency):
+    user_model = db.query(Users).filter(Users.id == user.get('id')).first()
+    return await update_user_attribute(user_model.id, "phone_number", new_phone_number, db)
 
-@router.put("/change_email/{user_id}")
-async def change_email(user_id: int, new_email: str, db: db_dependency):
-    return await update_user_attribute(user_id, "email", new_email, db)
+@router.put("/change_email/{user_model.id}")
+async def change_email(user: user_dependency, new_email: str, db: db_dependency):
+    user_model = db.query(Users).filter(Users.id == user.get('id')).first()
+    return await update_user_attribute(user_model.id, "email", new_email, db)
 
-@router.put("/change_password/{user_id}")
-async def change_password(user_id: int, new_password: str, db: db_dependency):
-    return await update_user_attribute(user_id, "password", new_password, db)
+@router.put("/change_password")
+async def change_password(user: user_dependency, password_request: ChangePasswordRequest, db: db_dependency):
+    user_model = db.query(Users).filter(Users.id == user.get('id')).first()
+    if not bcrypt_context.verify(password_request.current_password, user_model.hashed_password):
+        raise HTTPException(status_code=400, detail="Incorrect current password")
 
-@router.put('/change_username/{user_id}')
-async def change_username(user_id: int, new_username: str, db: db_dependency):
-    return await update_user_attribute(user_id, "username", new_username, db)
+    user_model.hashed_password = bcrypt_context.hash(password_request.new_password[:72])
+    db.commit()
+
+    return {"message": "Password changed successfully"}
+
+@router.put('/change_username/{user_model.id}')
+async def change_username(user: user_dependency, new_username: str, db: db_dependency):
+    user_model = db.query(Users).filter(Users.id == user.get('id')).first()
+    return await update_user_attribute(user_model.id, "username", new_username, db)
 
 @router.post("/token", response_model=Token)
 async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
@@ -157,6 +172,6 @@ async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm,
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Could not validate user.')
-    token = create_access_token(user.username, user.id, timedelta(minutes=20))
+    token = create_access_token(user.username, user.id, user.admin, timedelta(minutes=20))
 
     return {'access_token': token, 'token_type': 'bearer'}
