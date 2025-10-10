@@ -1,6 +1,6 @@
 from db import Base
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime
-
+from datetime import datetime, timezone
 
 class Users(Base):
     __tablename__= 'users'
@@ -19,4 +19,9 @@ class Reservations(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     reservation_time = Column(DateTime)
-    number_of_people = Column(Integer)
+    reason = Column(String, nullable=False)
+    number_of_people = Column(Integer, nullable=True)
+    status = Column(String, default='pending')
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=True, onupdate=lambda: datetime.now(timezone.utc))
+

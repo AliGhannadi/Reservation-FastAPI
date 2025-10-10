@@ -4,7 +4,7 @@ from db import SessionLocal
 from typing import Annotated, Literal
 from schemas import CreateReservation
 from models import Reservations
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from .auth import get_current_user 
 router = APIRouter(
     prefix='/reserve',
@@ -22,11 +22,17 @@ user_dependency = Annotated[dict, Depends(get_current_user)]
 
 @router.post("/create_reserve", status_code=201)
 async def create_reserve(user: user_dependency, db: db_dependency, create_reservation_request: CreateReservation):
-    reserve_model = Reservations(
-        user_id=create_reservation_request.user_id,
-        reservation_time=create_reservation_request.reservation_time
-    )
-    db.add(reserve_model)
-    db.commit()
-    db.refresh(reserve_model)
-    return reserve_model
+    try:
+        reserve_model = Reservations(
+            user_id=user.get('id'),
+            reservation_time=create_reservation_request.reservation_time,
+            reason=create_reservation_request.reason,
+            number_of_people=1
+        )
+        db.add(reserve_model)
+        db.commit()
+        db.refresh(reserve_model)
+        return reserve_model
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))

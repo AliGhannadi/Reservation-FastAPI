@@ -26,15 +26,13 @@ class ChangePasswordRequest(BaseModel):
     new_password: str
           
 class CreateReservation(BaseModel):
-    user_id: int
     reservation_time: datetime
-    number_of_people: int
-
     @field_validator('reservation_time')
     def validate_reservation_time(cls, value):
         if value < datetime.now(timezone.utc):
             raise ValueError('Reservation time cannot be in the past.')
         return value
+    reason: str = Field(..., min_length=5, max_length=100)
 
 class Token(BaseModel):
     access_token: str
