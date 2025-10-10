@@ -1,61 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from db import SessionLocal
-from typing import Annotated, Literal
+from typing import Annotated
 from schemas import CreateUser, Token, ChangePasswordRequest
 from models import Users
-from passlib.context import CryptContext
-from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
-from jose import jwt, JWTError
-from datetime import datetime, timedelta, timezone
-# Password hashing configuration
-SECRET_KEY = '197b2c37c391bed93fe80344fe73b806947a65e36206e05a1a23c2fa12702fe3'
-ALGORITHM = 'HS256'
-bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_bearer = OAuth2PasswordBearer(tokenUrl='users/token')
+from datetime import timedelta
+from fastapi.security import OAuth2PasswordRequestForm
+from . import auth
+from .auth import get_current_user, bcrypt_context, get_db
+
 router = APIRouter(
     prefix='/users',
     tags=['users']
 )
-#######################################################
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-def authenticate_user(username: str, password: str, db):
-    user = db.query(Users).filter(Users.username == username).first()
-    if not user:
-        return False
-    if not bcrypt_context.verify(password, user.hashed_password):
-        return False
-    return user
-
-
-def create_access_token(username: str, user_id: int, admin: bool, expires_delta: timedelta):
-    encode = {'sub': username, 'id': user_id, 'admin': admin}
-    expires = datetime.now() + expires_delta
-    encode.update({'exp': expires})
-    return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
-
-
-async def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get('sub')
-        user_id: int = payload.get('id')
-        admin: bool = payload.get('admin')
-        if username is None or user_id is None:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                                detail='Could not validate user.')
-        return {'username': username, 'id': user_id, 'admin': admin}
-    except JWTError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail='Could not validate user.')
-#################################################
-
 db_dependency = Annotated[Session, Depends(get_db)]
 user_dependency = Annotated[dict, Depends(get_current_user)]
 
@@ -167,12 +123,14 @@ async def change_username(user: user_dependency, new_username: str, db: db_depen
     return await update_user_attribute(user_model.id, "username", new_username, db)
 
 @router.post("/token", response_model=Token)
-async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-                                 db: db_dependency):
-    user = authenticate_user(form_data.username, form_data.password, db)
+async def login_for_access_token(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    db: db_dependency
+):
+    user = auth.authenticate_user(form_data.username, form_data.password, db)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Could not validate user.')
-    token = create_access_token(user.username, user.id, user.admin, timedelta(minutes=20))
+    token = auth.create_access_token(user.username, user.id, user.admin, timedelta(minutes=20))
 
     return {'access_token': token, 'token_type': 'bearer'}
