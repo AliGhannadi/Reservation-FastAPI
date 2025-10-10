@@ -33,4 +33,6 @@ class CreateReservation(BaseModel):
             raise ValueError('Reservation time cannot be in the past.')
         return value
 
-    
+class Token(BaseModel):
+    access_token: str
+    token_type: str
