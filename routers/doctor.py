@@ -65,3 +65,20 @@ async def get_doctor_schedule(
     ).order_by(Reservations.reservation_time).all()
     
     return appointments
+
+@router.put("/doctor/cancel-slot/{slot_id}")
+async def cancel_appointment_slot(
+    slot_id: int,
+    user: user_dependency,
+    db: db_dependency
+):
+    """Doctors can cancel their appointment slots"""
+    if user.get('role') != 'doctor':
+       raise HTTPException(status_code=403, detail='Only doctors can cancel appointment slots')
+    cancel_slot = db.query(Reservations).filter(Reservations.id == slot_id, Reservations.doctor_id == user.get('id'))
+    if cancel_slot.count() == 0:
+        raise HTTPException(status_code=404, detail='Appointment slot not found or you are not authorized to cancel it')
+    cancel_slot.update({'status': 'canceled'})
+    db.commit()
+    return {"message": "Appointment slot canceled successfully"}
+    
