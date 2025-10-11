@@ -27,7 +27,7 @@ class Reservations(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # Patient ID when booked
     doctor_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # Doctor who created the slot
     reservation_time = Column(DateTime)
-    reason = Column(String, nullable=False)
+    description = Column(String, nullable=False)
     status = Column(String, default='available')  # available, booked, cancelled
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, nullable=True, onupdate=lambda: datetime.now(timezone.utc))

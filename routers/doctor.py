@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from db import SessionLocal
 from typing import Annotated, List
-from schemas import CreateReservation
+from schemas import CreateAppointmentSlot
 from models import Users, Reservations, RoleEnum
 from datetime import datetime, timezone, timedelta
 from .auth import get_current_user 
@@ -25,7 +25,7 @@ user_dependency = Annotated[dict, Depends(get_current_user)]
 @router.post("/doctor/create-slot", status_code=status.HTTP_201_CREATED)
 async def create_appointment_slot(
     user: user_dependency,
-    appointment: CreateReservation,
+    appointment: CreateAppointmentSlot,
     db: db_dependency
 ):
     """Doctors can create available appointment slots"""
@@ -38,7 +38,7 @@ async def create_appointment_slot(
     # Create an available appointment slot
     new_slot = Reservations(
         reservation_time=appointment.reservation_time,
-        reason="Available for booking",
+        description=appointment.description,
         status="available",
         doctor_id=user.get('id')  # The doctor creating the slot
     )
@@ -120,25 +120,24 @@ async def get_doctor_schedule(
     
     return appointments
 
-@router.get("/my-appointments")
+@router.get('/my-appointments')
 async def get_my_appointments(
     user: user_dependency,
     db: db_dependency
 ):
-    """Users can view their booked appointments"""
+    """Users can view their booked appointments here"""
     appointments = db.query(Reservations).filter(
-        Reservations.status == "booked",
-        Reservations.reason.like(f"%patient {user.get('id')}%")
-    ).order_by(Reservations.reservation_time).all()
-    
-    # Get doctor information for each appointment
+    Reservations.status == "booked"
+
+)
     result = []
     for apt in appointments:
-        doctor = db.query(Users).filter(Users.id == apt.user_id).first()
-        result.append({
-            "id": apt.id,
-            "doctor_name": f"Dr. {doctor.first_name} {doctor.last_name}",
-            "time": apt.reservation_time,
-            "status": apt.status
-        })
+      doctor = db.query(Users).filter(Users.id == apt.user_id).first()
+      result.append({
+          "id": apt.id,
+          "doctor_name": f"Dr. {doctor.first_name} {doctor.last_name}",
+          "time": apt.reservation_time,
+          "status": apt.status
+          
+      })
     return result

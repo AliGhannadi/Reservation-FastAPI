@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from db import SessionLocal
 from typing import Annotated, Literal
-from schemas import CreateReservation
+from schemas import CreateAppointmentSlot
 from models import Reservations
 from datetime import datetime, timezone, timedelta
 from .auth import get_current_user 
@@ -21,7 +21,7 @@ db_dependency = Annotated[Session, Depends(get_db)]
 user_dependency = Annotated[dict, Depends(get_current_user)]
 
 @router.post("/create_reserve", status_code=201)
-async def create_reserve(user: user_dependency, db: db_dependency, create_reservation_request: CreateReservation):
+async def create_reserve(user: user_dependency, db: db_dependency, create_reservation_request: CreateAppointmentSlot):
     try:
         reserve_model = Reservations(
             user_id=user.get('id'),
