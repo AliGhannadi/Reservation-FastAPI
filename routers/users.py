@@ -45,7 +45,7 @@ async def create_user(db: db_dependency, create_user_request: CreateUser):
             last_name=create_user_request.last_name,
             phone_number=create_user_request.phone_number,
             hashed_password=bcrypt_context.hash(create_user_request.password[:72]),
-            admin=create_user_request.admin
+            role=create_user_request.role
         )
         
         db.add(create_user_model)
@@ -59,7 +59,7 @@ async def create_user(db: db_dependency, create_user_request: CreateUser):
     
 @router.get("/all_users/")
 async def get_all_users(user: user_dependency, db: db_dependency):
-    if user.get('admin') is False:
+    if user.get('role') != 'admin':
         raise HTTPException(status_code=403, detail="You are not authorized to access this resource.")
     user_model = db.query(Users).all()
     return user_model
@@ -131,6 +131,6 @@ async def login_for_access_token(
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Could not validate user.')
-    token = auth.create_access_token(user.username, user.id, user.admin, timedelta(minutes=20))
+    token = auth.create_access_token(user.username, user.id, user.role, timedelta(minutes=20))
 
     return {'access_token': token, 'token_type': 'bearer'}

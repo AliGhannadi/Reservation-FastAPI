@@ -36,3 +36,10 @@ async def create_reserve(user: user_dependency, db: db_dependency, create_reserv
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+@router.get("/my-reservations")
+async def get_my_reservations(user: user_dependency, db: db_dependency):
+    try:
+        reservations = db.query(Reservations).filter(Reservations.user_id == user.get('id')).all()
+        return reservations
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
