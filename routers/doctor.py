@@ -29,7 +29,7 @@ async def create_appointment_slot(
     db: db_dependency
 ):
     """Doctors can create available appointment slots"""
-    if user.get('role') != RoleEnum.doctor:
+    if user.get('role') not in [RoleEnum.doctor, RoleEnum.admin]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail='Only doctors can create appointment slots'
@@ -54,7 +54,7 @@ async def get_doctor_schedule(
     db: db_dependency
 ):
     """Doctors can view their appointment schedule"""
-    if user.get('role') != RoleEnum.doctor:
+    if user.get('role') not in [RoleEnum.doctor, RoleEnum.admin]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail='Only doctors can view their schedule'
@@ -73,7 +73,7 @@ async def cancel_appointment_slot(
     db: db_dependency
 ):
     """Doctors can cancel their appointment slots"""
-    if user.get('role') != RoleEnum.doctor:
+    if user.get('role') not in [RoleEnum.doctor, RoleEnum.admin]:
        raise HTTPException(status_code=403, detail='Only doctors can cancel appointment slots')
     cancel_slot = db.query(Reservations).filter(Reservations.id == slot_id, Reservations.doctor_id == user.get('id')).first()
     if not cancel_slot:

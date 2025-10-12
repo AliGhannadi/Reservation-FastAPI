@@ -70,7 +70,7 @@ async def book_appointment(
     # Update the slot with patient's information
     slot.status = "booked"
     slot.user_id = user.get('id')  # Set the patient's ID
-    slot.description = f"Appointment booked by patient {user.get('id')}"
+    slot.description = db.query(Reservations).filter(Reservations.id == slot_id).first().description
     db.commit()
     db.refresh(slot)
     return slot
