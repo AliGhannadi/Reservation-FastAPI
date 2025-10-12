@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import Annotated
 from schemas import CreateUser, Token, ChangePasswordRequest
-from models import Users
+from models import Users, RoleEnum
 from datetime import timedelta
 from fastapi.security import OAuth2PasswordRequestForm
 from . import auth
@@ -59,7 +59,7 @@ async def create_user(db: db_dependency, create_user_request: CreateUser):
     
 @router.get("/all_users/")
 async def get_all_users(user: user_dependency, db: db_dependency):
-    if user.get('role') != 'admin':
+    if user.get('role') != RoleEnum.admin:
         raise HTTPException(status_code=403, detail="You are not authorized to access this resource.")
     user_model = db.query(Users).all()
     return user_model

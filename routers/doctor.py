@@ -73,10 +73,10 @@ async def cancel_appointment_slot(
     db: db_dependency
 ):
     """Doctors can cancel their appointment slots"""
-    if user.get('role') != 'doctor':
+    if user.get('role') != RoleEnum.doctor:
        raise HTTPException(status_code=403, detail='Only doctors can cancel appointment slots')
-    cancel_slot = db.query(Reservations).filter(Reservations.id == slot_id, Reservations.doctor_id == user.get('id'))
-    if cancel_slot.count() == 0:
+    cancel_slot = db.query(Reservations).filter(Reservations.id == slot_id, Reservations.doctor_id == user.get('id')).first()
+    if not cancel_slot:
         raise HTTPException(status_code=404, detail='Appointment slot not found or you are not authorized to cancel it')
     cancel_slot.update({'status': 'canceled'})
     db.commit()

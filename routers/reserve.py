@@ -82,14 +82,14 @@ async def get_my_appointments(
 ):
     """Users can view their booked appointments here"""
     appointments = db.query(Reservations).filter(
-    Reservations.status == "booked",
-    Reservations.user_id == user.get('id')
-
-)
+        Reservations.status == "booked",
+        Reservations.user_id == user.get('id')
+    ).all()
+    
     result = []
     for apt in appointments:
-      doctor = db.query(Users).filter(Users.id == apt.user_id).first()
-      result.append({
+        doctor = db.query(Users).filter(Users.id == apt.doctor_id).first()
+        result.append({
           "id": apt.id,
           "doctor_name": f"Dr. {doctor.first_name} {doctor.last_name}",
           "time": apt.reservation_time,

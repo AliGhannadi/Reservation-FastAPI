@@ -18,6 +18,8 @@ class Users(Base):
     username = Column(String, unique=True, nullable=False)
     hashed_password = Column(String)
     phone_number = Column(String, unique=True, nullable=False)
+    active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     role = Column(SQLEnum(RoleEnum), default=RoleEnum.user, nullable=False)
     appointments = Column(String, nullable=True)  # New column added
 
