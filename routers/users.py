@@ -7,7 +7,8 @@ from datetime import timedelta
 from fastapi.security import OAuth2PasswordRequestForm
 from . import auth
 from .auth import get_current_user, bcrypt_context, get_db
-
+import random
+from .email import send_verification_email, store_verification_code, verify_verification_code
 router = APIRouter(
     prefix='/users',
     tags=['users']
@@ -23,15 +24,16 @@ async def get_users():
 @router.post("/create_user/")
 async def create_user(db: db_dependency, create_user_request: CreateUser):
     try:
+        submit_email = create_user_request.email.strip().lower()
         # Check if user already exists
         existing_user = db.query(Users).filter(
-            (Users.email == create_user_request.email) |
+            (Users.email == submit_email) |
             (Users.username == create_user_request.username) |
             (Users.phone_number == create_user_request.phone_number)
         ).first()
         
         if existing_user:
-            if existing_user.email == create_user_request.email:
+            if existing_user.email == submit_email:
                 raise HTTPException(status_code=400, detail="Email already registered")
             if existing_user.username == create_user_request.username:
                 raise HTTPException(status_code=400, detail="Username already taken")
@@ -39,7 +41,7 @@ async def create_user(db: db_dependency, create_user_request: CreateUser):
                 raise HTTPException(status_code=400, detail="Phone number already registered")
 
         create_user_model = Users(
-            email=create_user_request.email,
+            email=submit_email,
             username=create_user_request.username,
             first_name=create_user_request.first_name,
             last_name=create_user_request.last_name,
@@ -47,16 +49,42 @@ async def create_user(db: db_dependency, create_user_request: CreateUser):
             hashed_password=bcrypt_context.hash(create_user_request.password[:72]),
             role=create_user_request.role
         )
-        
+      
         db.add(create_user_model)
         db.commit()
         db.refresh(create_user_model)
-        return {"message": "User created successfully"}
+        
+        code = str(random.randint(1000, 9999))
+        store_verification_code(submit_email, code)
+        await send_verification_email(submit_email, code)
+        
+        return {"message": "User created successfully. Verify your email to continue."}
         
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
     
+@router.put("/email_verification/")
+async def email_verification(code: str, db: db_dependency, user: user_dependency):
+    user_email = user.get('email')
+    try:
+        user = db.query(Users).filter(Users.email == user_email).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        if user.active:
+            return {"message": "Email already verified."}
+        
+        if not verify_verification_code(user_email, code):
+            raise HTTPException(status_code=400, detail="Invalid or expired verification code")
+        
+        user.active = True
+        db.commit()
+        return {"message": "Email verified successfully!"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))  
+      
 @router.get("/all_users/")
 async def get_all_users(user: user_dependency, db: db_dependency):
     if user.get('role') != RoleEnum.admin:
@@ -131,6 +159,6 @@ async def login_for_access_token(
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Could not validate user.')
-    token = auth.create_access_token(user.username, user.id, user.role, timedelta(minutes=20))
+    token = auth.create_access_token(user.username, user.id, user.role, user.email, timedelta(minutes=20))
 
     return {'access_token': token, 'token_type': 'bearer'}

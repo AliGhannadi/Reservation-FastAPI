@@ -1,57 +1,49 @@
-from fastapi_mail import FastMail, MessageSchema
-from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
-from datetime import datetime
-from pytz import utc
+from datetime import datetime, timedelta
+import smtplib
+import ssl
+from email.message import EmailMessage
 
+# In-memory store for verification codes: { email: (code, expires_at) }
+verification_codes = {}
 
-conf = ConnectionConfig(
-    MAIL_USERNAME="ali.ghannadi218@gmail.com",
-    MAIL_PASSWORD="ftwtacoeaygwwwav",
-    MAIL_FROM="ali.ghannadi218@gmail.com",
-    MAIL_PORT=587,
-    MAIL_SERVER="smtp.gmail.com",
-    MAIL_STARTTLS=True,
-    MAIL_SSL_TLS=False,
-    USE_CREDENTIALS=True
-
-)
-
-async def send_verification_email(email: str, subject: str, message: str):
+async def send_verification_email(email: str, code: str):
     if not email or not isinstance(email, str):
         raise ValueError('Invalid email')
-    fm = FastMail(conf)
-    message = MessageSchema(
-        subject=subject,
-        recipients=[email],
-        body=message,
-        subtype='plain'         
-    )        
-    await fm.send_message(message)
+    subject = "Your verification code"
+    body = f"Your email verification code is: {code}"
+
+    msg = EmailMessage()
+    msg["From"] = "ali.ghannadi218@gmail.com"
+    msg["To"] = email
+    msg["Subject"] = subject
+    msg.set_content(body)
+
+    context = ssl.create_default_context()
+    with smtplib.SMTP("smtp.gmail.com", 587) as server:
+        server.ehlo()
+        server.starttls(context=context)
+        server.login("ali.ghannadi218@gmail.com", "ftwtacoeaygwwwav")
+        server.send_message(msg)
     return {"message": "Email has been sent"}
 
+def store_verification_code(email: str, code: str, ttl_minutes: int = 10) -> bool:
+    if not email or not code:
+        return False
+    expires_at = datetime.now() + timedelta(minutes=ttl_minutes)
+    verification_codes[email] = (code, expires_at)
+    return True
 
-emailstores = {
-    'default': SQLAlchemyJobStore(url='sqlite:///emails.db')
-}
-
-scheduler = BackgroundScheduler(jobstores=emailstores)
-scheduler.start()
-
-def send_email_job(email: str, subject: str, message: str):
-     import asyncio
-     asyncio.run(send_verification_email(email, subject, message))
-
-def schedule_email(email: str, subject: str, message: str, scheduled_time: datetime):
-    if scheduled_time.tzinfo is None:
-        scheduled_time = scheduled_time.replace(tzinfo=utc)
-    else:
-        scheduled_time = scheduled_time.astimezone(utc)
-    scheduler.add_job(
-        func=send_email_job,
-        trigger='date',
-        run_date=scheduled_time,
-        id=f"email_{email}_{scheduled_time.timestamp()}",
-        args=[email, subject, message]
-    )
+def verify_verification_code(email: str, code: str) -> bool:
+    stored = verification_codes.get(email)
+    if not stored:
+        return False
+    stored_code, expires_at = stored
+    if datetime.now() > expires_at:
+        # Expired; clean up
+        verification_codes.pop(email, None)
+        return False
+    if stored_code != code:
+        return False
+    # Success; consume the code
+    verification_codes.pop(email, None)
+    return True
