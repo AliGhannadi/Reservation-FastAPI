@@ -149,6 +149,8 @@ Visit Docs: http://127.0.0.1:8000/docs
   - Use an App Password and 2FA.
   - Check less-secure apps policy (if applicable) and network rules.
 
+- You must submit database information and email credentials before running the app.
+
 ## License
 
 MIT

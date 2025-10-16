@@ -1,4 +1,4 @@
-# config.py
+# config.py, configuration file for the application
 
 # Email configuration
 EMAIL_ADDRESS = ""
