@@ -50,13 +50,19 @@ pip install -r requirements.txt
 
 3. Environment
 
-- SQLite file is created automatically: `reservation.db`
+- Database (PostgreSQL recommended): set the connection URL in `db.py` or via env var.
+  - Example env var: `DATABASE_URL=postgresql+psycopg2://USER:PASSWORD@HOST:PORT/DBNAME`
+  - Example local URL: `postgresql+psycopg2://postgres:postgres@localhost:5432/reservation`
+  - Install driver: `pip install psycopg2-binary`
+- If you use SQLite for dev, the file is created automatically: `reservation.db`
 - Email sending uses Gmail SMTP in `routers/email.py`. Set valid credentials or use an app password.
 
 4. Run server
 
 ```bash
 uvicorn main:app --reload
+fastapi dev main.py
+fastapi run main.py
 ```
 
 Visit Docs: http://127.0.0.1:8000/docs
@@ -129,6 +135,7 @@ Visit Docs: http://127.0.0.1:8000/docs
   - `GET /admin/search_user/{search_term}`
   - `PUT /admin/update_user_role/{user_id}`
   - `PUT /admin/update_reservation_status/{reservation_id}`
+  - All of the APIEndpoints is also available in /docs, via swagger ui.
 
 ## Troubleshooting
 
