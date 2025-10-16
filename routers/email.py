@@ -26,7 +26,7 @@ async def send_verification_email(email: str, code: str):
         server.send_message(msg)
     return {"message": "Email has been sent"}
 
-def store_verification_code(email: str, code: str, ttl_minutes: int = 10) -> bool:
+def store_verification_code(email: str, code: str, ttl_minutes: int = 30) -> bool:
     if not email or not code:
         return False
     expires_at = datetime.now() + timedelta(minutes=ttl_minutes)

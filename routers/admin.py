@@ -62,8 +62,11 @@ async def delete_user(user_id: int, db: db_dependency, user: user_dependency):
     user_to_delete = db.query(Users).filter(Users.id == user_id).first()
     if not user_to_delete:
         raise HTTPException(status_code=404, detail='No users found.')
+    if user_to_delete.id == user.get('id'):
+        raise HTTPException(status_code=401, detail='You cant delete your account by yourself.')
     db.delete(user_to_delete)
     db.commit()
+    return {"message": f"User {user_id} has been deleted."}
     
 @router.get("/delete_reservation/{reservation_id}")
 async def delete_reservation(reservation_id: int, db: db_dependency, user: user_dependency):

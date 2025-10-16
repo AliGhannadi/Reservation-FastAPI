@@ -48,7 +48,8 @@ async def create_user(db: db_dependency, create_user_request: CreateUser):
             last_name=create_user_request.last_name,
             phone_number=create_user_request.phone_number,
             hashed_password=bcrypt_context.hash(create_user_request.password[:72]),
-            role=create_user_request.role
+            role=create_user_request.role,
+            active=False
         )
       
         db.add(create_user_model)
@@ -68,6 +69,12 @@ async def create_user(db: db_dependency, create_user_request: CreateUser):
 @router.put("/email_verification/")
 async def email_verification(code: str, db: db_dependency, user: user_dependency):
     user_email = user.get('email')
+    if user_email:
+        user_email = user_email.strip().lower()
+    # Normalize and validate code input
+    normalized_code = str(code).strip() if code is not None else ""
+    if not normalized_code:
+        raise HTTPException(status_code=400, detail="Verification code is required")
     try:
         user = db.query(Users).filter(Users.email == user_email).first()
         if not user:
@@ -76,7 +83,7 @@ async def email_verification(code: str, db: db_dependency, user: user_dependency
         if user.active:
             return {"message": "Email already verified."}
         
-        if not verify_verification_code(user_email, code):
+        if not verify_verification_code(user_email, normalized_code):
             raise HTTPException(status_code=400, detail="Invalid or expired verification code")
         
         user.active = True
