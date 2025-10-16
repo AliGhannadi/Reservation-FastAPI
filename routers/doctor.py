@@ -8,8 +8,8 @@ from datetime import datetime, timezone, timedelta
 from .auth import get_current_user 
 
 router = APIRouter(
-    prefix='/appointments',
-    tags=['appointments']
+    prefix='/doctor-panel',
+    tags=['doctor-panel']
 )
 
 def get_db():
@@ -22,7 +22,7 @@ def get_db():
 db_dependency = Annotated[Session, Depends(get_db)]
 user_dependency = Annotated[dict, Depends(get_current_user)]
 
-@router.post("/doctor/create-slot", status_code=status.HTTP_201_CREATED)
+@router.post("/create-slot", status_code=status.HTTP_201_CREATED)
 async def create_appointment_slot(
     user: user_dependency,
     appointment: CreateAppointmentSlot,
@@ -48,7 +48,7 @@ async def create_appointment_slot(
     db.refresh(new_slot)
     return new_slot
 
-@router.get("/doctor/my-schedule")
+@router.get("/my-schedule")
 async def get_doctor_schedule(
     user: user_dependency,
     db: db_dependency
@@ -66,7 +66,7 @@ async def get_doctor_schedule(
     
     return appointments
 
-@router.put("/doctor/cancel-slot/{slot_id}")
+@router.put("/cancel-slot/{slot_id}")
 async def cancel_appointment_slot(
     slot_id: int,
     user: user_dependency,

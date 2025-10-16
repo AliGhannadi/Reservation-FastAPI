@@ -9,17 +9,18 @@ from . import auth
 from .auth import get_current_user, bcrypt_context, get_db
 import random
 from .email import send_verification_email, store_verification_code, verify_verification_code
+
+######################################################################
+
 router = APIRouter(
-    prefix='/users',
-    tags=['users']
+    prefix='/user',
+    tags=['user']
 )
 db_dependency = Annotated[Session, Depends(get_db)]
 user_dependency = Annotated[dict, Depends(get_current_user)]
 
 ###########################################################
-@router.get("/")
-async def get_users():
-    return {"message": "Users route is working!"}
+
 
 @router.post("/create_user/")
 async def create_user(db: db_dependency, create_user_request: CreateUser):
@@ -84,13 +85,7 @@ async def email_verification(code: str, db: db_dependency, user: user_dependency
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))  
-      
-@router.get("/all_users/")
-async def get_all_users(user: user_dependency, db: db_dependency):
-    if user.get('role') != RoleEnum.admin:
-        raise HTTPException(status_code=403, detail="You are not authorized to access this resource.")
-    user_model = db.query(Users).all()
-    return user_model
+
 
 @router.get("/information/")
 async def get_user_by_id(user: user_dependency, db: db_dependency):
