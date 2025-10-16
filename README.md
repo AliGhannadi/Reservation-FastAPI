@@ -1,6 +1,6 @@
 # Reservation API (FastAPI)
 
-A simple reservation system built with FastAPI and SQLAlchemy, featuring JWT auth, user management, email verification (in-memory codes), appointment slots, and admin utilities.
+A simple reservation system built with FastAPI and SQLAlchemy, featuring JWT auth, user management, email verification (in-memory), appointment slots, and admin utilities.
 
 ## Features
 
@@ -13,8 +13,10 @@ A simple reservation system built with FastAPI and SQLAlchemy, featuring JWT aut
 ## Tech Stack
 
 - FastAPI, Uvicorn
-- SQLAlchemy (SQLite)
+- SQLAlchemy (PostgreSQL)
 - Pydantic v2
+- SMPT Mail
+  
 
 ## Project Structure
 
@@ -22,6 +24,7 @@ A simple reservation system built with FastAPI and SQLAlchemy, featuring JWT aut
 reserveation/
   main.py
   db.py
+  config.py
   models.py
   schemas.py
   routers/
@@ -41,20 +44,18 @@ reserveation/
 ```bash
 python -m venv venv
 venv\Scripts\activate  # on Windows
-pip install -r requirements.txt  # if available
+pip install -r requirements.txt 
 # Or install minimal set:
 pip install fastapi uvicorn sqlalchemy passlib[bcrypt] python-jose pydantic email-validator
-# Or using pip freeze:
+# Or using pip install:
 pip install -r requirements.txt
 ```
 
 3. Environment
 
-- Database (PostgreSQL recommended): set the connection URL in `db.py` or via env var.
-  - Example env var: `DATABASE_URL=postgresql+psycopg2://USER:PASSWORD@HOST:PORT/DBNAME`
-  - Example local URL: `postgresql+psycopg2://postgres:postgres@localhost:5432/reservation`
+- Database (PostgreSQL): set the connection information in config.py file.
   - Install driver: `pip install psycopg2-binary`
-- If you use SQLite for dev, the file is created automatically: `reservation.db`
+- Also the reservation.db file is available for using SQLite database.
 - Email sending uses Gmail SMTP in `routers/email.py`. Set valid credentials or use an app password.
 
 4. Run server
@@ -105,9 +106,8 @@ Visit Docs: http://127.0.0.1:8000/docs
 ## Email Verification
 
 - In-memory storage in `routers/email.py`:
-  - `store_verification_code(email, code, ttl_minutes=10)`
+  - `store_verification_code(email, code, ttl_minutes=30)`
   - `verify_verification_code(email, code)` consumes on success
-- Important: Email must match exactly between registration and verification. Normalize emails (lowercase/trim) consistently.
 
 ## Appointments
 
@@ -149,10 +149,10 @@ Visit Docs: http://127.0.0.1:8000/docs
   - Use an App Password and 2FA.
   - Check less-secure apps policy (if applicable) and network rules.
 
-- You must submit database information and email credentials before running the app.
+- You must submit database information and email verification credentials before running the app.
 
 ## License
 
-MIT
+MIT License
 
 
