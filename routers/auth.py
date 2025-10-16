@@ -52,4 +52,20 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Could not validate user.')
         
+        
 user_dependency = Annotated[dict, Depends(get_current_user)]
+
+# Guard: require the authenticated user to be active
+def require_active_user(
+    user: user_dependency,
+    db: Annotated[Session, Depends(get_db)]
+):
+    user_model = db.query(Users).filter(Users.id == user.get('id')).first()
+    if not user_model:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='User not found')
+    if not user_model.active:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Email not verified')
+    return user
+
+
+

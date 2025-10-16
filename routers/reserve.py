@@ -5,7 +5,7 @@ from typing import Annotated, List
 from schemas import CreateAppointmentSlot
 from models import Users, Reservations, RoleEnum
 from datetime import datetime, timezone, timedelta
-from .auth import get_current_user 
+from .auth import get_current_user, require_active_user 
 router = APIRouter(
     prefix='/reserve',
     tags=['reserve']
@@ -20,7 +20,7 @@ def get_db():
 db_dependency = Annotated[Session, Depends(get_db)]
 user_dependency = Annotated[dict, Depends(get_current_user)]
 
-@router.get("/available")
+@router.get("/available", dependencies=[Depends(require_active_user)])
 async def get_available_appointments(
     db: db_dependency,
     user: user_dependency
@@ -42,7 +42,7 @@ async def get_available_appointments(
         })
     return result
 
-@router.post("/book/{slot_id}", status_code=status.HTTP_201_CREATED)
+@router.post("/book/{slot_id}", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_active_user)])
 async def book_appointment(
     slot_id: int,
     user: user_dependency,
@@ -75,7 +75,7 @@ async def book_appointment(
     db.refresh(slot)
     return slot
 
-@router.get('/my-appointments')
+@router.get('/my-appointments', dependencies=[Depends(require_active_user)])
 async def get_my_appointments(
     db: db_dependency,
     user: user_dependency

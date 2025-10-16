@@ -5,7 +5,7 @@ from typing import Annotated, List
 from schemas import CreateAppointmentSlot
 from models import Users, Reservations, RoleEnum
 from datetime import datetime, timezone, timedelta
-from .auth import get_current_user 
+from .auth import get_current_user, require_active_user 
 
 router = APIRouter(
     prefix='/doctor-panel',
@@ -22,7 +22,7 @@ def get_db():
 db_dependency = Annotated[Session, Depends(get_db)]
 user_dependency = Annotated[dict, Depends(get_current_user)]
 
-@router.post("/create-slot", status_code=status.HTTP_201_CREATED)
+@router.post("/create-slot", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_active_user)])
 async def create_appointment_slot(
     user: user_dependency,
     appointment: CreateAppointmentSlot,
@@ -48,7 +48,7 @@ async def create_appointment_slot(
     db.refresh(new_slot)
     return new_slot
 
-@router.get("/my-schedule")
+@router.get("/my-schedule", dependencies=[Depends(require_active_user)])
 async def get_doctor_schedule(
     user: user_dependency,
     db: db_dependency
@@ -66,7 +66,7 @@ async def get_doctor_schedule(
     
     return appointments
 
-@router.put("/cancel-slot/{slot_id}")
+@router.put("/cancel-slot/{slot_id}", dependencies=[Depends(require_active_user)])
 async def cancel_appointment_slot(
     slot_id: int,
     user: user_dependency,
@@ -78,7 +78,8 @@ async def cancel_appointment_slot(
     cancel_slot = db.query(Reservations).filter(Reservations.id == slot_id, Reservations.doctor_id == user.get('id')).first()
     if not cancel_slot:
         raise HTTPException(status_code=404, detail='Appointment slot not found or you are not authorized to cancel it')
-    cancel_slot.update({'status': 'canceled'})
+    cancel_slot.status = 'canceled'
     db.commit()
+    db.refresh(cancel_slot)
     return {"message": "Appointment slot canceled successfully"}
     

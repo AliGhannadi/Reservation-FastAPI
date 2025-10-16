@@ -6,7 +6,7 @@ from models import Users, RoleEnum
 from datetime import timedelta
 from fastapi.security import OAuth2PasswordRequestForm
 from . import auth
-from .auth import get_current_user, bcrypt_context, get_db
+from .auth import get_current_user, bcrypt_context, get_db, require_active_user
 import random
 from .email import send_verification_email, store_verification_code, verify_verification_code
 
@@ -94,8 +94,10 @@ async def email_verification(code: str, db: db_dependency, user: user_dependency
         raise HTTPException(status_code=500, detail=str(e))  
 
 
-@router.get("/information/")
+@router.get("/information/", dependencies=[Depends(require_active_user)])
 async def get_user_by_id(user: user_dependency, db: db_dependency):
+    if user.get('active') is False:
+        raise HTTPException(status_code=403, detail="Please verify your email to access this resource.")
     user_model = db.query(Users).filter(Users.id == user.get('id')).first()
     if not user_model:
         raise HTTPException(status_code=404, detail="User not found")
@@ -115,27 +117,27 @@ async def update_user_attribute(user_id: int, attribute: str, value: str, db: db
     db.refresh(user_model)
     return user_model
 
-@router.put("/change_first_name/{user_model.id}")
+@router.put("/change_first_name/{user_model.id}", dependencies=[Depends(require_active_user)])
 async def change_first_name(user: user_dependency, new_first_name: str, db: db_dependency):
     user_model = db.query(Users).filter(Users.id == user.get('id')).first()
     return await update_user_attribute(user_model.id, "first_name", new_first_name, db)
 
-@router.put("/change_last_name/{user_model.id}")
+@router.put("/change_last_name/{user_model.id}", dependencies=[Depends(require_active_user)])
 async def change_last_name(user: user_dependency, new_last_name: str, db: db_dependency):
     user_model = db.query(Users).filter(Users.id == user.get('id')).first()
     return await update_user_attribute(user_model.id, "last_name", new_last_name, db)
     
-@router.put("/change_phone_number/{user_model.id}")
+@router.put("/change_phone_number/{user_model.id}", dependencies=[Depends(require_active_user)])
 async def change_phone_number(user: user_dependency, new_phone_number: str, db: db_dependency):
     user_model = db.query(Users).filter(Users.id == user.get('id')).first()
     return await update_user_attribute(user_model.id, "phone_number", new_phone_number, db)
 
-@router.put("/change_email/{user_model.id}")
+@router.put("/change_email/{user_model.id}", dependencies=[Depends(require_active_user)])
 async def change_email(user: user_dependency, new_email: str, db: db_dependency):
     user_model = db.query(Users).filter(Users.id == user.get('id')).first()
     return await update_user_attribute(user_model.id, "email", new_email, db)
 
-@router.put("/change_password")
+@router.put("/change_password", dependencies=[Depends(require_active_user)])
 async def change_password(user: user_dependency, password_request: ChangePasswordRequest, db: db_dependency):
     user_model = db.query(Users).filter(Users.id == user.get('id')).first()
     if not bcrypt_context.verify(password_request.current_password, user_model.hashed_password):
@@ -147,7 +149,7 @@ async def change_password(user: user_dependency, password_request: ChangePasswor
 
     return {"message": "Password changed successfully"}
 
-@router.put('/change_username/{user_model.id}')
+@router.put('/change_username/{user_model.id}', dependencies=[Depends(require_active_user)])
 async def change_username(user: user_dependency, new_username: str, db: db_dependency):
     user_model = db.query(Users).filter(Users.id == user.get('id')).first()
     return await update_user_attribute(user_model.id, "username", new_username, db)
